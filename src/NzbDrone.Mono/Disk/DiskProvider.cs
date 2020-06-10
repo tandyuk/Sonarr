@@ -20,15 +20,17 @@ namespace NzbDrone.Mono.Disk
         private readonly Logger _logger;
         private readonly IProcMountProvider _procMountProvider;
         private readonly ISymbolicLinkResolver _symLinkResolver;
+        private readonly ICreateRefLink _createRefLink;
 
         // Mono supports sending -1 for a uint to indicate that the owner or group should not be set
         // `unchecked((uint)-1)` and `uint.MaxValue` are the same thing.
         private const uint UNCHANGED_ID = uint.MaxValue;
 
-        public DiskProvider(IProcMountProvider procMountProvider, ISymbolicLinkResolver symLinkResolver, Logger logger)
+        public DiskProvider(IProcMountProvider procMountProvider, ISymbolicLinkResolver symLinkResolver, ICreateRefLink createRefLink, Logger logger)
         {
             _procMountProvider = procMountProvider;
             _symLinkResolver = symLinkResolver;
+            _createRefLink = createRefLink;
             _logger = logger;
         }
 
@@ -381,6 +383,11 @@ namespace NzbDrone.Mono.Disk
 
         public override bool TryCreateHardLink(string source, string destination)
         {
+            if (_createRefLink.TryCreateRefLink(source, destination))
+            {
+                return true;
+            }
+
             try
             {
                 var fileInfo = UnixFileSystemInfo.GetFileSystemEntry(source);
